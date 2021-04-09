@@ -1,1 +1,1 @@
-# license-verifier-tester
+# license-tester

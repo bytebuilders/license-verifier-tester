@@ -1,0 +1,3 @@
+# go.bytebuilders.dev/license-verifier v0.8.0
+## explicit
+go.bytebuilders.dev/license-verifier/info
