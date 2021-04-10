@@ -363,7 +363,7 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.18.9
+# k8s.io/apiserver v0.18.9 => github.com/kmodules/apiserver v0.18.10-0.20200922195747-1bd1cc8f00d1
 ## explicit
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
@@ -629,7 +629,6 @@ k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/workqueue
 # k8s.io/component-base v0.18.9
 k8s.io/component-base/featuregate
-k8s.io/component-base/logs
 k8s.io/component-base/metrics
 k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/metrics/testutil
@@ -659,11 +658,13 @@ k8s.io/utils/net
 k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# kmodules.xyz/client-go v0.0.0-20201105071625-0b277310b9b8
+# kmodules.xyz/client-go v0.0.0-20210406074814-1b9f0e240c49
+## explicit
 kmodules.xyz/client-go
 kmodules.xyz/client-go/core/v1
 kmodules.xyz/client-go/discovery
 kmodules.xyz/client-go/dynamic
+kmodules.xyz/client-go/logs
 kmodules.xyz/client-go/meta
 kmodules.xyz/client-go/tools/clusterid
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.7
@@ -677,3 +678,4 @@ sigs.k8s.io/structured-merge-diff/v3/typed
 sigs.k8s.io/structured-merge-diff/v3/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
+# k8s.io/apiserver => github.com/kmodules/apiserver v0.18.10-0.20200922195747-1bd1cc8f00d1

@@ -1,5 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+Copyright AppsCode Inc. and Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,17 +22,23 @@ import (
 	"log"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
+
+// ref:
+// - https://github.com/kubernetes/component-base/blob/master/logs/logs.go
+// - https://github.com/kubernetes/klog/blob/master/examples/coexist_glog/coexist_glog.go
 
 const logFlushFreqFlagName = "log-flush-frequency"
 
 var logFlushFreq = pflag.Duration(logFlushFreqFlagName, 5*time.Second, "Maximum number of seconds between log flushes")
 
 func init() {
-	klog.InitFlags(flag.CommandLine)
+	utilruntime.Must(flag.Set("stderrthreshold", "INFO"))
 }
 
 // AddFlags registers this package's flags on arbitrary FlagSets, such that they point to the
@@ -58,8 +64,28 @@ func InitLogs() {
 	go wait.Forever(klog.Flush, *logFlushFreq)
 }
 
+func ParseFlags() {
+	// ref: https://github.com/kubernetes/kubernetes/issues/17162#issuecomment-225596212
+	utilruntime.Must(flag.CommandLine.Parse([]string{}))
+
+	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(klogFlags)
+
+	// Sync the glog and klog flags.
+	flag.CommandLine.VisitAll(func(f1 *flag.Flag) {
+		f2 := klogFlags.Lookup(f1.Name)
+		if f2 != nil {
+			value := f1.Value.String()
+			// Ignore error. klog's -log_backtrace_at flag throws error when set to empty string.
+			// Unfortunately, there is no way to tell if a flag was set to empty string or left unset on command line.
+			_ = f2.Value.Set(value)
+		}
+	})
+}
+
 // FlushLogs flushes logs immediately.
 func FlushLogs() {
+	glog.Flush()
 	klog.Flush()
 }
 

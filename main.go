@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	goflag "flag"
 	"fmt"
 
 	"go.bytebuilders.dev/license-verifier/info"
@@ -26,6 +27,7 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+	"kmodules.xyz/client-go/logs"
 )
 
 var (
@@ -35,11 +37,23 @@ var (
 )
 
 func main() {
-	klog.InitFlags(nil)
-	_ = flag.Set("v", "3")
-	defer klog.Flush()
+	logs.InitLogs()
+	defer logs.FlushLogs()
 
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
+
+	klogFlags := goflag.NewFlagSet("klog", goflag.ExitOnError)
+	klog.InitFlags(klogFlags)
+
+	// Sync the glog and klog flags.
+	goflag.CommandLine.VisitAll(func(f1 *goflag.Flag) {
+		f2 := klogFlags.Lookup(f1.Name)
+		if f2 != nil {
+			value := f1.Value.String()
+			_ = f2.Value.Set(value)
+		}
+	})
 
 	PrintInfo()
 
