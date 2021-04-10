@@ -20,10 +20,40 @@ import (
 	"fmt"
 
 	"go.bytebuilders.dev/license-verifier/info"
+	verifier "go.bytebuilders.dev/license-verifier/kubernetes"
+
+	flag "github.com/spf13/pflag"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
+)
+
+var (
+	masterURL      = flag.String("master", "", "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+	kubeconfigPath = flag.String("kubeconfig", "", "Path to kubeconfig file with authorization information (the master location is set by the master flag).")
+	licenseFile    = flag.String("license-file", "", "Path to license file.")
 )
 
 func main() {
+	klog.InitFlags(nil)
+	_ = flag.Set("v", "3")
+	defer klog.Flush()
+
+	flag.Parse()
+
 	PrintInfo()
+
+	config, err := clientcmd.BuildConfigFromFlags(*masterURL, *kubeconfigPath)
+	if err != nil {
+		klog.Fatalf("could not get Kubernetes config: %s", err)
+	}
+
+	stopCh := genericapiserver.SetupSignalHandler()
+
+	//nolint:errcheck
+	go verifier.VerifyLicensePeriodically(config, *licenseFile, stopCh)
+
+	select {}
 }
 
 func PrintInfo() {
