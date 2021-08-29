@@ -24,10 +24,10 @@ import (
 	verifier "go.bytebuilders.dev/license-verifier/kubernetes"
 
 	flag "github.com/spf13/pflag"
+	"gomodules.xyz/logs"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
-	"kmodules.xyz/client-go/logs"
+	"k8s.io/klog/v2"
 )
 
 var (
