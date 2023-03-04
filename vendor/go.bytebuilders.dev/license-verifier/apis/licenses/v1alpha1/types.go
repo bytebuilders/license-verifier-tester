@@ -26,16 +26,20 @@ import (
 type License struct {
 	metav1.TypeMeta `json:",inline,omitempty"`
 
-	Issuer    string        `json:"issuer,omitempty"` // byte.builders
-	Features  []string      `json:"features,omitempty"`
-	PlanName  string        `json:"planName,omitempty"`
-	Clusters  []string      `json:"clusters,omitempty"` // cluster_id ?
-	User      *User         `json:"user,omitempty"`
-	NotBefore *metav1.Time  `json:"notBefore,omitempty"` // start of subscription start
-	NotAfter  *metav1.Time  `json:"notAfter,omitempty"`  // if set, use this
-	ID        string        `json:"id,omitempty"`        // license ID
-	Status    LicenseStatus `json:"status"`
-	Reason    string        `json:"reason"`
+	Data         []byte            `json:"-"`
+	Issuer       string            `json:"issuer,omitempty"` // byte.builders
+	ProductLine  string            `json:"productLine,omitempty"`
+	TierName     string            `json:"tierName,omitempty"`
+	PlanName     string            `json:"planName,omitempty"`
+	Features     []string          `json:"features,omitempty"`
+	FeatureFlags map[string]string `json:"featureFlags,omitempty"`
+	Clusters     []string          `json:"clusters,omitempty"` // cluster_id ?
+	User         *User             `json:"user,omitempty"`
+	NotBefore    *metav1.Time      `json:"notBefore,omitempty"` // start of subscription start
+	NotAfter     *metav1.Time      `json:"notAfter,omitempty"`  // if set, use this
+	ID           string            `json:"id,omitempty"`        // license ID
+	Status       LicenseStatus     `json:"status"`
+	Reason       string            `json:"reason"`
 }
 
 type User struct {
@@ -43,11 +47,18 @@ type User struct {
 	Email string `json:"email"`
 }
 
+// +kubebuilder:validation:Enum=unknown;active;invalid;canceled
 type LicenseStatus string
 
 const (
 	LicenseUnknown  LicenseStatus = "unknown"
 	LicenseActive   LicenseStatus = "active"
-	LicenseExpired  LicenseStatus = "expired"
+	LicenseInvalid  LicenseStatus = "invalid"
 	LicenseCanceled LicenseStatus = "canceled"
 )
+
+type Contract struct {
+	ID              string      `json:"id"`
+	StartTimestamp  metav1.Time `json:"startTimestamp"`
+	ExpiryTimestamp metav1.Time `json:"expiryTimestamp"`
+}

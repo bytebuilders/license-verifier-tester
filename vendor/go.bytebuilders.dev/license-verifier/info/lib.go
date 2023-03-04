@@ -16,7 +16,26 @@ limitations under the License.
 
 package info
 
-import "strconv"
+import (
+	"bytes"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
+	"strconv"
+	"strings"
+	"unicode"
+
+	"go.bytebuilders.dev/license-verifier/apis/licenses"
+
+	"github.com/PuerkitoBio/purell"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
+)
 
 var (
 	EnforceLicense string
@@ -28,18 +47,141 @@ var (
 	ProductName string // This has been renamed to Features
 	ProductUID  string
 
-	prodRegistrationAPIEndpoint string = "https://byte.builders/api/v1/register"
-	qaRegistrationAPIEndpoint   string = "https://appscode.ninja/api/v1/register"
+	prodDomain  = "byte.builders"
+	prodAddress = "https://" + prodDomain
+
+	qaDomain  = "appscode.ninja"
+	qaAddress = "https://" + qaDomain
+
+	registrationAPIPath  = "api/v1/register"
+	LicenseIssuerAPIPath = "api/v1/license/issue"
 )
+
+func Features() []string {
+	return ParseFeatures(ProductName)
+}
+
+func ParseFeatures(features string) []string {
+	out := strings.FieldsFunc(features, func(r rune) bool {
+		return unicode.IsSpace(r) || r == ',' || r == ';'
+	})
+	return sets.NewString(out...).List()
+}
 
 func SkipLicenseVerification() bool {
 	v, _ := strconv.ParseBool(EnforceLicense)
 	return !v
 }
 
-func RegistrationAPIEndpoint() string {
-	if SkipLicenseVerification() {
-		return qaRegistrationAPIEndpoint
+func MustRegistrationAPIEndpoint() string {
+	r, err := RegistrationAPIEndpoint()
+	if err != nil {
+		panic(err)
 	}
-	return prodRegistrationAPIEndpoint
+	return r
+}
+
+func RegistrationAPIEndpoint(override ...string) (string, error) {
+	u, err := APIServerAddress(override...)
+	if err != nil {
+		return "", err
+	}
+	u.Path = path.Join(u.Path, registrationAPIPath)
+	return u.String(), nil
+}
+
+func MustLicenseIssuerAPIEndpoint() string {
+	r, err := LicenseIssuerAPIEndpoint()
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func LicenseIssuerAPIEndpoint(override ...string) (string, error) {
+	u, err := APIServerAddress(override...)
+	if err != nil {
+		return "", err
+	}
+	u.Path = path.Join(u.Path, LicenseIssuerAPIPath)
+	return u.String(), nil
+}
+
+func MustAPIServerAddress() *url.URL {
+	u, err := APIServerAddress()
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
+func APIServerAddress(override ...string) (*url.URL, error) {
+	if len(override) > 0 && override[0] != "" {
+		nu, err := purell.NormalizeURLString(override[0],
+			purell.FlagsUsuallySafeGreedy|purell.FlagRemoveDuplicateSlashes)
+		if err != nil {
+			return nil, err
+		}
+		if nu == prodAddress || nu == qaAddress {
+			return url.Parse(nu)
+		}
+	}
+
+	if SkipLicenseVerification() {
+		return url.Parse(qaAddress)
+	}
+	return url.Parse(prodAddress)
+}
+
+func HostedEndpoint(u string) (bool, error) {
+	nu, err := purell.NormalizeURLString(u,
+		purell.FlagsUsuallySafeGreedy|purell.FlagRemoveDuplicateSlashes)
+	if err != nil {
+		return false, err
+	}
+	return nu == prodAddress || nu == qaAddress, nil
+}
+
+func HostedDomain(d string) bool {
+	return d == prodDomain || d == qaDomain
+}
+
+func LoadLicenseCA() ([]byte, error) {
+	if LicenseCA != "" {
+		return []byte(LicenseCA), nil
+	}
+
+	resp, err := http.Get("https://licenses.appscode.com/certificates/ca.crt")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, apierrors.NewGenericServerResponse(
+			resp.StatusCode,
+			http.MethodPost,
+			schema.GroupResource{Group: licenses.GroupName, Resource: "License"},
+			"LicenseCA",
+			buf.String(),
+			0,
+			false,
+		)
+	}
+	return buf.Bytes(), nil
+}
+
+func ParseCertificate(data []byte) (*x509.Certificate, error) {
+	block, _ := pem.Decode(data)
+	if block == nil {
+		// This probably is a JWT token, should be check for that when ready
+		return nil, errors.New("failed to parse certificate PEM")
+	}
+	return x509.ParseCertificate(block.Bytes)
 }
